@@ -1,0 +1,49 @@
+# Maintainer: devin <git@devin.tw>
+pkgname=pages
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Terminal viewer for Apple iWork word processor documents'
+arch=('x86_64' 'aarch64')
+url='https://github.com/crsves/pages'
+license=('MIT')
+depends=('glibc' 'libgcc')
+makedepends=('cargo')
+# The release profile strips symbols, so there is nothing for a debug package.
+options=('!debug')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('413a805830ad81f8444b67d5e1ca400c89ab44a647dfa43c02755e4c74327d7f')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+  local bin=target/release/pages
+  "$bin" --generate-man > pages.1
+  "$bin" --generate-completions bash > completion.bash
+  "$bin" --generate-completions zsh > completion.zsh
+  "$bin" --generate-completions fish > completion.fish
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 target/release/pages "$pkgdir/usr/bin/pages"
+  install -Dm644 pages.1 "$pkgdir/usr/share/man/man1/pages.1"
+  install -Dm644 completion.bash "$pkgdir/usr/share/bash-completion/completions/pages"
+  install -Dm644 completion.zsh "$pkgdir/usr/share/zsh/site-functions/_pages"
+  install -Dm644 completion.fish "$pkgdir/usr/share/fish/vendor_completions.d/pages.fish"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

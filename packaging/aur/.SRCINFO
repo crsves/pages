@@ -1,0 +1,16 @@
+pkgbase = pages
+	pkgdesc = Terminal viewer for Apple iWork word processor documents
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/crsves/pages
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	makedepends = cargo
+	depends = glibc
+	depends = libgcc
+	options = !debug
+	source = pages-0.1.0.tar.gz::https://github.com/crsves/pages/archive/refs/tags/v0.1.0.tar.gz
+	sha256sums = 413a805830ad81f8444b67d5e1ca400c89ab44a647dfa43c02755e4c74327d7f
+
+pkgname = pages
