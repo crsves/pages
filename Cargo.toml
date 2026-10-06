@@ -1,0 +1,36 @@
+[package]
+name = "pages-cli"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Render Apple Pages documents in the terminal"
+license = "MIT"
+repository = "https://github.com/crsves/pages"
+homepage = "https://github.com/crsves/pages"
+readme = "README.md"
+keywords = ["pages", "iwork", "apple", "terminal", "cli"]
+categories = ["command-line-utilities", "parser-implementations"]
+exclude = ["/.github", "/packaging", "/rustfmt.toml", "tests/fixtures/*.py"]
+
+[lib]
+name = "pages_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pages"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+clap_mangen = "0.3"
+snap = "1"
+terminal_size = "0.4"
+unicode-width = "0.2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
