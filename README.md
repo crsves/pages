@@ -1,17 +1,29 @@
 # pages
 
-Render Apple Pages (`.pages`) documents in the terminal.
+[![CI](https://github.com/crsves/pages/actions/workflows/ci.yml/badge.svg)](https://github.com/crsves/pages/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/pages-cli.svg)](https://crates.io/crates/pages-cli)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+Apple Pages documents, rendered in your terminal. View them, page through them, and
+`git diff` them, without opening Pages. Works on macOS and Linux.
+
+<!-- Demo video: when editing on github.com, drag pages-demo.mp4 onto this line. -->
+
+![pages rendering a document with headings, lists, and a table](assets/screenshot.png)
 
 ## Install
 
 ```sh
 brew install crsves/tap/pages      # Homebrew (macOS, Linux)
-yay -S pages                       # Arch Linux (AUR)
-cargo install --git https://github.com/crsves/pages
+cargo binstall pages-cli           # prebuilt binary via cargo-binstall
+cargo install pages-cli            # build from source
 ```
 
-Prebuilt binaries for macOS and Linux (x86_64 and arm64) are on the
-[releases page](https://github.com/crsves/pages/releases).
+On Debian and Ubuntu, download the `.deb` from the
+[releases page](https://github.com/crsves/pages/releases) and run
+`sudo apt install ./pages_*.deb`. The same page has tarballs for macOS and Linux (x86_64 and
+arm64). An AUR package is ready in [`packaging/aur`](packaging/aur) and will be published
+once AUR account registration reopens.
 
 ## Usage
 
@@ -22,9 +34,54 @@ pages -w 72 essay.pages    # wrap at 72 columns
 pages --color never a.pages b.pages
 ```
 
-It reads the file directly. Pages.app does not have to be installed, so it also works on
-Linux. It decodes Pages' IWA format (Snappy-compressed protobuf) using a small hand-written
-reader, so it has no protobuf/codegen dependency.
+`pages` reads the file directly, so Pages.app doesn't need to be installed. It decodes the
+IWA format (Snappy-compressed protobuf) with a small hand-written reader.
+
+## Integrations
+
+### `git diff` for Pages documents
+
+Git treats `.pages` files as binary. Point it at `pages` and diffs become readable text:
+
+```sh
+echo '*.pages diff=pages' >> .gitattributes
+git config diff.pages.textconv "pages --color never"
+```
+
+```diff
+   Why it matters
+-  Documents outlive the apps that made them.
++  Documents outlive every app that made them.
+```
+
+Use `git config --global` and `~/.config/git/attributes` to turn it on everywhere.
+
+### fzf
+
+```sh
+fzf --preview 'pages --color always -w $FZF_PREVIEW_COLUMNS {}'
+```
+
+### yazi
+
+With the [piper](https://github.com/yazi-rs/plugins/tree/main/piper.yazi) plugin, in
+`~/.config/yazi/yazi.toml`:
+
+```toml
+[[plugin.prepend_previewers]]
+url = "*.pages"
+run = 'piper -- pages --color always -w "$w" "$1"'
+```
+
+### ranger
+
+In `~/.config/ranger/scope.sh`, inside `handle_extension`:
+
+```sh
+        pages)
+            pages --color always -w "${PV_WIDTH}" -- "${FILE_PATH}" && exit 4
+            exit 1;;
+```
 
 ## What renders
 
@@ -50,6 +107,9 @@ Colour is on when stdout is a TTY and `NO_COLOR` is unset.
   before 2019 (they show a placeholder).
 - Footnotes are decoded but haven't been checked against real documents yet.
 - iCloud files that haven't been downloaded can't be read. Open them in Finder first.
+
+If a document renders wrong, please [open an issue](https://github.com/crsves/pages/issues).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to share a problem document safely.
 
 ## Build
 

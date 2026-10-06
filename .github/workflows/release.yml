@@ -31,26 +31,47 @@ jobs:
         if: contains(matrix.target, 'musl')
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - run: cargo build --locked --release --target ${{ matrix.target }}
-      - name: Package
+      - name: Generate man page and completions
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use whichever binary runs on this host.
+          gen="target/${{ matrix.target }}/release/pages"
+          "$gen" --version >/dev/null 2>&1 || { cargo build --locked --release; gen=target/release/pages; }
+          mkdir -p target/assets
+          "$gen" --generate-man > target/assets/pages.1
+          gzip -9n < target/assets/pages.1 > target/assets/pages.1.gz
+          "$gen" --generate-completions bash > target/assets/pages.bash
+          "$gen" --generate-completions zsh > target/assets/_pages
+          "$gen" --generate-completions fish > target/assets/pages.fish
+      - name: Package tarball
         shell: bash
         run: |
           set -euo pipefail
           name="pages-${GITHUB_REF_NAME}-${{ matrix.target }}"
-          bin="target/${{ matrix.target }}/release/pages"
           mkdir -p "dist/$name/completions"
-          cp "$bin" README.md LICENSE CHANGELOG.md "dist/$name/"
-          # Generate with whichever binary runs on this host.
-          gen="$bin"; "$gen" --version >/dev/null 2>&1 || { cargo build --locked --release; gen=target/release/pages; }
-          "$gen" --generate-man > "dist/$name/pages.1"
-          "$gen" --generate-completions bash > "dist/$name/completions/pages.bash"
-          "$gen" --generate-completions zsh > "dist/$name/completions/_pages"
-          "$gen" --generate-completions fish > "dist/$name/completions/pages.fish"
+          cp "target/${{ matrix.target }}/release/pages" README.md LICENSE CHANGELOG.md target/assets/pages.1 "dist/$name/"
+          cp target/assets/pages.bash target/assets/_pages target/assets/pages.fish "dist/$name/completions/"
           tar -C dist -czf "dist/$name.tar.gz" "$name"
           (cd dist && shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256")
+      - name: Install cargo-deb
+        if: contains(matrix.target, 'linux')
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb
+      - name: Package .deb
+        if: contains(matrix.target, 'linux')
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb=$(cargo deb --no-build --target ${{ matrix.target }} --output dist/)
+          (cd dist && shasum -a 256 "$(basename "$deb")" > "$(basename "$deb").sha256")
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target }}
-          path: dist/*.tar.gz*
+          path: |
+            dist/*.tar.gz*
+            dist/*.deb*
 
   release:
     needs: build
@@ -71,5 +92,5 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           # Notes: this version's section of CHANGELOG.md.
           awk -v v="$version" '/^## /{p = index($0, "## " v) == 1; next} p' CHANGELOG.md > notes.md
-          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.sha256 \
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.deb dist/*.sha256 \
             --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag

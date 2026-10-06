@@ -1,6 +1,6 @@
 [package]
 name = "pages-cli"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.85"
 description = "Render Apple Pages documents in the terminal"
@@ -10,7 +10,7 @@ homepage = "https://github.com/crsves/pages"
 readme = "README.md"
 keywords = ["pages", "iwork", "apple", "terminal", "cli"]
 categories = ["command-line-utilities", "parser-implementations"]
-exclude = ["/.github", "/packaging", "/rustfmt.toml", "tests/fixtures/*.py"]
+exclude = ["/.github", "/packaging", "/assets", "/demo", "/rustfmt.toml", "tests/fixtures/*.py"]
 
 [lib]
 name = "pages_cli"
@@ -29,6 +29,35 @@ snap = "1"
 terminal_size = "0.4"
 unicode-width = "0.2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# `cargo binstall pages-cli` downloads the release tarball instead of compiling.
+# Linux gnu hosts fall back to the static musl builds automatically.
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/pages-v{ version }-{ target }.tar.gz"
+bin-dir = "pages-v{ version }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+# .deb packages built by the release workflow (cargo-deb). The release job
+# generates target/assets/* with `pages --generate-man/--generate-completions`.
+[package.metadata.deb]
+name = "pages"
+section = "utils"
+priority = "optional"
+maintainer = "devin <git@devin.tw>"
+license-file = ["LICENSE", "0"]
+copyright = "2026 devin"
+extended-description = """\
+Renders Apple Pages (.pages) documents as styled text in the terminal: \
+headings, inline styles, lists, tables, links, and quotes. Reads the file \
+directly, so Pages.app is not needed."""
+assets = [
+    ["target/release/pages", "usr/bin/", "755"],
+    ["target/assets/pages.1.gz", "usr/share/man/man1/", "644"],
+    ["target/assets/pages.bash", "usr/share/bash-completion/completions/pages", "644"],
+    ["target/assets/_pages", "usr/share/zsh/vendor-completions/_pages", "644"],
+    ["target/assets/pages.fish", "usr/share/fish/vendor_completions.d/pages.fish", "644"],
+    ["README.md", "usr/share/doc/pages/README.md", "644"],
+]
 
 [profile.release]
 lto = true

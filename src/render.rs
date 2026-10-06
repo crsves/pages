@@ -11,7 +11,8 @@ const ACCENT: u8 = 212;
 const H2: u8 = 75;
 const H3: u8 = 114;
 const MUTED: u8 = 245;
-const FAINT: u8 = 240;
+// Mid grey: visible on light, dark, and translucent backgrounds alike.
+const FAINT: u8 = 244;
 const LINK: u8 = 75;
 const QUOTE: u8 = 141;
 
@@ -197,7 +198,7 @@ impl Renderer<'_> {
             };
             out.push((text.clone(), look));
             if let Some(url) = &s.style.link {
-                if !self.opts.hyperlinks && url.trim_start_matches("mailto:") != s.text.trim() {
+                if !self.opts.hyperlinks && !same_link(url, &s.text) {
                     out.push((format!(" ({url})"), Look { dim: true, ..Look::default() }));
                 }
             }
@@ -415,6 +416,19 @@ impl Renderer<'_> {
     }
 }
 
+/// Whether link text already shows its URL, ignoring scheme, `www.`, and a
+/// trailing slash (`github.com/x` vs `https://github.com/x/`).
+fn same_link(url: &str, text: &str) -> bool {
+    fn norm(s: &str) -> &str {
+        let s = s.trim();
+        let s = s.split_once("://").map_or(s, |(_, rest)| rest);
+        let s = s.strip_prefix("mailto:").unwrap_or(s);
+        let s = s.strip_prefix("www.").unwrap_or(s);
+        s.strip_suffix('/').unwrap_or(s)
+    }
+    norm(url).eq_ignore_ascii_case(norm(text))
+}
+
 fn cw(c: char) -> usize {
     c.width().unwrap_or(0)
 }
@@ -473,6 +487,14 @@ mod tests {
         let runs = vec![("日本語です".to_string(), Look::default())];
         let lines: Vec<String> = r.wrap(&runs, 4).iter().map(|l| r.paint(l)).collect();
         assert_eq!(lines, ["日本", "語で", "す"]);
+    }
+
+    #[test]
+    fn link_text_matching() {
+        assert!(same_link("https://github.com/crsves/pages", "github.com/crsves/pages"));
+        assert!(same_link("https://www.example.com/", "example.com"));
+        assert!(same_link("mailto:a@b.c", "a@b.c"));
+        assert!(!same_link("https://example.com/docs", "the docs"));
     }
 
     #[test]
